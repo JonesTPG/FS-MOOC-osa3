@@ -1,3 +1,6 @@
+require("dotenv").config();
+const Person = require("./models/person");
+
 const express = require("express");
 const app = express();
 
@@ -45,18 +48,15 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/persons", (req, res) => {
-  res.json(persons);
+  Person.find({}).then(persons => {
+    res.json(persons.map(person => person.toJSON()));
+  });
 });
 
 app.get("/api/persons/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const person = persons.find(person => person.id === id);
-
-  if (person) {
-    res.json(person);
-  } else {
-    res.status(404).end();
-  }
+  Person.findById(req.params.id).then(person => {
+    res.json(person.toJSON());
+  });
 });
 
 app.delete("/api/persons/:id", (req, res) => {
@@ -67,28 +67,26 @@ app.delete("/api/persons/:id", (req, res) => {
 });
 
 app.post("/api/persons", (req, res) => {
-  const newId = Math.ceil(Math.random() * 1000);
-  const person = req.body;
+  const body = req.body;
 
   if (
-    person.name === "" ||
-    person.name == null ||
-    person.number === "" ||
-    person.number == null
+    body.name === "" ||
+    body.name == null ||
+    body.number === "" ||
+    body.number == null
   ) {
     res.json({ error: "name or number missing" });
     return;
   }
 
-  let found = persons.find(p => p.name === person.name);
-  if (found) {
-    res.json({ error: "name already in list" });
-    return;
-  }
+  const person = new Person({
+    name: body.name,
+    number: body.number
+  });
 
-  person.id = newId;
-  persons = persons.concat(person);
-  res.json(person);
+  person.save().then(savedPerson => {
+    res.json(savedPerson.toJSON());
+  });
 });
 
 app.get("/info", (req, res) => {
@@ -105,7 +103,7 @@ app.get("/info", (req, res) => {
   res.send(responseHtml);
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
